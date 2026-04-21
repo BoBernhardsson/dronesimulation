@@ -269,7 +269,7 @@
         </div>
         <div class="field">
           <label for="simDuration"><span>T [s]</span></label>
-          <input id="simDuration" type="number" min="10" max="120" step="1" value="40" />
+          <input id="simDuration" type="number" min="10" max="120" step="1" value="60" />
         </div>
         <div class="field">
           <label for="timeScale"><span>Speed</span></label>
@@ -392,24 +392,32 @@
       running: false,
       paused: false,
       ended: false,
+
       t: 0,
       x: 0,
       v: 0,
+
       eInt: 0,
       prevE: 0,
+
+      // NEW controller states:
+      prevX: 0,   // previous measured height
+      dFilt: 0,   // filtered derivative signal
+
       scoreRaw: 0,
       lastRealTime: 0,
+
       keys: { up: false, down: false },
       history: [],
       cargoDropped: false,
-      lastU: 0,
+      lastU: 0
     };
 
     const plant = {
       m0: 1.0,
       k0: 1.0,
-      fadeRate: 0.0065,
-      cargoDropTime: 15,
+      fadeRate: 0.005,
+      cargoDropTime: 45,
       cargoDropFraction: 0.30,
       floor: 0,
       ceiling: 12,
@@ -484,6 +492,9 @@
       state.v = 0;
       state.eInt = 0;
       state.prevE = 0;
+
+      state.prevX = 0;
+      state.dFilt = 0;
       state.scoreRaw = 0;
       state.history = [];
       state.cargoDropped = false;
@@ -502,29 +513,41 @@
 
     function pushHistory(t, x, r, u, uff, upid, m, k) {
       state.history.push({ t, x, r, u, uff, upid, m, k });
-      if (state.history.length > 3000) state.history.shift();
+      if (state.history.length > 10000) state.history.shift();
     }
 
     function computeControl(dt) {
       const p = getParams();
       const r = reference(state.t);
       const e = r - state.x;
+      
       let u = 0, uff = 0, upid = 0;
 
       if (currentMode() === 'manual') {
         u = p.manual;
       } else {
         uff = p.uff;
-        const de = dt > 0 ? (e - state.prevE) / dt : 0;
+
+        const dy = dt > 0 ? (state.x - state.prevX) / dt : 0;
+
+        // Low-pass filtered derivative of measurement
+        const tauD = 0.2;
+        const alphaD = dt / (tauD + dt);
+        state.dFilt += alphaD * (dy - state.dFilt);
+
         const iCandidate = state.eInt + e * dt;
-        upid = p.kp * e + p.ki * iCandidate + p.kd * de;
+        upid = p.kp * e + p.ki * iCandidate - p.kd * state.dFilt;
         let uUnsat = uff + upid;
         u = clamp(uUnsat, 0, p.sat);
+
+        // Anti-windup: only integrate when saturation is not made worse
         if (Math.abs(u - uUnsat) < 1e-8 || Math.sign(e) !== Math.sign(uUnsat - u)) {
           state.eInt = iCandidate;
         }
-        upid = p.kp * e + p.ki * state.eInt + p.kd * de;
+
+        upid = p.kp * e + p.ki * state.eInt - p.kd * state.dFilt;
         u = clamp(uff + upid, 0, p.sat);
+        state.prevX = state.x;
       }
 
       state.prevE = e;
@@ -550,7 +573,7 @@
       }
 
       const du = dt > 0 ? (u - state.lastU) / dt : 0;
-      state.scoreRaw += (1.3 * e * e + 0.012 * u * u + 0.0007 * du * du) * dt;
+      state.scoreRaw += (1.3 * e * e ) * dt;
       state.lastU = u;
       state.t += dt;
 
@@ -708,8 +731,8 @@
       ctx.closePath();
       ctx.fill();
 
-      const bob = 2 * Math.sin(14 * state.t);
-      const tilt = clamp(-state.v * 0.03, -0.12, 0.12);
+      const bob = 0 * 2* Math.sin(14 * state.t);
+      const tilt = 0 * clamp(-state.v * 0.03, -0.12, 0.12);
       ctx.save();
       ctx.translate(xCenter, yDrone + bob);
       ctx.rotate(tilt);
@@ -876,7 +899,7 @@
       dtReal = clamp(dtReal, 0, 0.04);
       let dtSimTotal = dtReal * p.timeScale;
 
-      const dtMax = 0.01;
+      const dtMax = 0.025;
       while (dtSimTotal > 0) {
         const dt = Math.min(dtMax, dtSimTotal);
         stepSim(dt);
@@ -959,8 +982,8 @@
       setInterval(() => {
         if (currentMode() !== 'manual') return;
         let val = parseFloat(ui.manualThrottle.value);
-        if (state.keys.up) val += 0.18;
-        if (state.keys.down) val -= 0.18;
+        if (state.keys.up) val += 0.10;
+        if (state.keys.down) val -= 0.10;
         val = clamp(val, 0, 20);
         ui.manualThrottle.value = String(val);
         updateLabels();
