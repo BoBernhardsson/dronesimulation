@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drone Height Control Game</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent2: #a78bfa;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --grid: rgba(148, 163, 184, 0.16);
+      --lineRef: #f59e0b;
+      --lineHeight: #38bdf8;
+      --lineU: #a78bfa;
+      --lineUff: #22c55e;
+      --linePid: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+      color: var(--text);
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      height: 100vh;
+      gap: 10px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .topbar, .footer {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      align-items: start;
+      overflow: hidden;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1.05fr 1.35fr;
+      gap: 10px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .panel {
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 18px;
+      padding: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.24);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: #f8fafc;
+      letter-spacing: 0.02em;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.35;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 14px;
+    }
+
+    .control-row {
+      display: grid;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    input[type="number"], select, button {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #1d4ed8, #1e40af);
+      border: none;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: linear-gradient(180deg, #374151, #1f2937);
+    }
+
+    button:hover { filter: brightness(1.08); }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      background: rgba(31, 41, 55, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .stat .name {
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-bottom: 4px;
+    }
+
+    .stat .value {
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .mode-manual { color: var(--warn); }
+    .mode-pid { color: var(--good); }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    canvas {
+      max-height: 100%;
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #0b1324 0%, #0f172a 55%, #111827 100%);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 4px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .footer {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 8px;
+      background: #1f2937;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      font-size: 0.8rem;
+    }
+
+    .highlight {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1100px) {
+      .topbar { grid-template-columns: 1fr 1fr; }
+      .main { grid-template-columns: 1fr; }
+      .footer { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+      .main { grid-template-columns: 1fr; }
+      .footer { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 720px) {
+      .topbar { grid-template-columns: 1fr; }
+      .controls-grid { grid-template-columns: 1fr; }
+      .buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div>
+        <h2 style="margin:0 0 6px;">Drone Height Control Game</h2>
+        <div class="small">
+          Learn manual control and PID + feedforward control for a simple vertical drone model.
+          The plant changes during flight: <span class="highlight">battery fades slowly</span> and a
+          <span class="highlight">cargo drop happens at 15 s</span>.
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Mode and reference</div>
+        <div class="controls-grid">
+          <div class="control-row">
+            <label for="modeSelect">Control mode</label>
+            <select id="modeSelect">
+              <option value="manual">Manual throttle</option>
+              <option value="pid">PID + feedforward</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label for="refSelect">Reference profile</label>
+            <select id="refSelect">
+              <option value="steps">Step track</option>
+              <option value="sine">Smooth sine</option>
+              <option value="challenge">Challenge mix</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label for="simDuration">Duration [s]</label>
+            <input id="simDuration" type="number" min="10" max="120" step="1" value="40" />
+          </div>
+          <div class="control-row">
+            <label for="timeScale">Simulation speed</label>
+            <input id="timeScale" type="number" min="0.25" max="4" step="0.25" value="1" />
+          </div>
+        </div>
+        <div class="buttons">
+          <button id="startBtn">Start / Restart</button>
+          <button id="pauseBtn" class="secondary">Pause</button>
+          <button id="demoBtn" class="secondary">Load decent PID</button>
+          <button id="fullscreenBtn" class="secondary">Fullscreen</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Manual or feedforward</div>
+        <div class="controls-grid">
+          <div class="control-row">
+            <label for="manualThrottle">Manual throttle u</label>
+            <input id="manualThrottle" type="range" min="0" max="20" step="0.01" value="9.81" />
+            <div class="small"><span id="manualThrottleVal">9.81</span></div>
+          </div>
+          <div class="control-row">
+            <label for="ffGain">Feedforward gain kff</label>
+            <input id="ffGain" type="range" min="0" max="20" step="0.01" value="9.81" />
+            <div class="small"><span id="ffGainVal">9.81</span></div>
+          </div>
+        </div>
+        <div class="small" style="margin-top:8px;">
+          In manual mode, use the slider or keyboard: <span class="kbd">↑</span>/<span class="kbd">W</span>
+          to increase thrust and <span class="kbd">↓</span>/<span class="kbd">S</span> to decrease thrust.
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">PID tuning</div>
+        <div class="controls-grid">
+          <div class="control-row">
+            <label for="kp">Kp</label>
+            <input id="kp" type="range" min="0" max="20" step="0.01" value="7.0" />
+            <div class="small"><span id="kpVal">7.00</span></div>
+          </div>
+          <div class="control-row">
+            <label for="ki">Ki</label>
+            <input id="ki" type="range" min="0" max="15" step="0.01" value="2.2" />
+            <div class="small"><span id="kiVal">2.20</span></div>
+          </div>
+          <div class="control-row">
+            <label for="kd">Kd</label>
+            <input id="kd" type="range" min="0" max="10" step="0.01" value="5.4" />
+            <div class="small"><span id="kdVal">5.40</span></div>
+          </div>
+          <div class="control-row">
+            <label for="sat">Saturation |u|max</label>
+            <input id="sat" type="range" min="2" max="30" step="0.1" value="18" />
+            <div class="small"><span id="satVal">18.0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="name">Score</div>
+        <div class="value" id="scoreVal">1000</div>
+      </div>
+      <div class="stat">
+        <div class="name">Mode</div>
+        <div class="value" id="modeVal">Manual</div>
+      </div>
+      <div class="stat">
+        <div class="name">Height / Ref [m]</div>
+        <div class="value" id="heightVal">0.00 / 0.00</div>
+      </div>
+      <div class="stat">
+        <div class="name">Mass / k</div>
+        <div class="value" id="plantVal">1.00 / 1.00</div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="panel">
+        <div class="section-title">Drone view</div>
+        <div class="canvas-wrap"><canvas id="droneCanvas" width="900" height="620"></canvas></div>
+        <div class="small" style="margin-top:8px;">
+          The drone must track the target height while the plant changes. Battery fade reduces thrust authority via
+          <span class="highlight">k(t)</span>, and at <span class="highlight">15 s</span> the payload is dropped so
+          <span class="highlight">m(t)</span> decreases by 30%.
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-title">Streaming plots</div>
+        <div class="canvas-wrap"><canvas id="plotCanvas" width="1100" height="620"></canvas></div>
+        <div class="legend">
+          <span><i class="swatch" style="background: var(--lineRef);"></i> Reference</span>
+          <span><i class="swatch" style="background: var(--lineHeight);"></i> Height</span>
+          <span><i class="swatch" style="background: var(--lineU);"></i> Total control u</span>
+          <span><i class="swatch" style="background: var(--lineUff);"></i> Feedforward part</span>
+          <span><i class="swatch" style="background: var(--linePid);"></i> PID part</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>
+        <div class="section-title">Model</div>
+        <div class="small">
+          The simulated drone follows
+          <code style="color:#f8fafc;">x¨(t) = k(t)u(t) - m(t)g</code> with state <code style="color:#f8fafc;">x</code> = height.
+          A good feedforward guess is roughly <code style="color:#f8fafc;">u_ff ≈ m_nom g / k_nom</code>, and PID then corrects the remaining error.
+          The score penalizes tracking error, control effort, and large control moves.
+        </div>
+      </div>
+      <div>
+        <div class="section-title">Teaching tips</div>
+        <div class="small">
+          Start in <span class="highlight">manual mode</span> so students feel how difficult it is to reject plant changes.
+          Then switch to <span class="highlight">PID + feedforward</span> and discuss why feedforward removes most of the steady thrust demand,
+          while integral action compensates for battery fade and the mass drop.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const g = 9.81;
+
+    const ui = {
+      fullscreenBtn: document.getElementById('fullscreenBtn'),
+      modeSelect: document.getElementById('modeSelect'),
+      refSelect: document.getElementById('refSelect'),
+      simDuration: document.getElementById('simDuration'),
+      timeScale: document.getElementById('timeScale'),
+      startBtn: document.getElementById('startBtn'),
+      pauseBtn: document.getElementById('pauseBtn'),
+      demoBtn: document.getElementById('demoBtn'),
+      manualThrottle: document.getElementById('manualThrottle'),
+      ffGain: document.getElementById('ffGain'),
+      kp: document.getElementById('kp'),
+      ki: document.getElementById('ki'),
+      kd: document.getElementById('kd'),
+      sat: document.getElementById('sat'),
+      manualThrottleVal: document.getElementById('manualThrottleVal'),
+      ffGainVal: document.getElementById('ffGainVal'),
+      kpVal: document.getElementById('kpVal'),
+      kiVal: document.getElementById('kiVal'),
+      kdVal: document.getElementById('kdVal'),
+      satVal: document.getElementById('satVal'),
+      scoreVal: document.getElementById('scoreVal'),
+      modeVal: document.getElementById('modeVal'),
+      heightVal: document.getElementById('heightVal'),
+      plantVal: document.getElementById('plantVal'),
+      droneCanvas: document.getElementById('droneCanvas'),
+      plotCanvas: document.getElementById('plotCanvas'),
+    };
+
+    const droneCtx = ui.droneCanvas.getContext('2d');
+    const plotCtx = ui.plotCanvas.getContext('2d');
+
+    const state = {
+      running: false,
+      paused: false,
+      ended: false,
+      t: 0,
+      x: 0,
+      v: 0,
+      eInt: 0,
+      prevE: 0,
+      scoreRaw: 0,
+      lastRealTime: 0,
+      keys: { up: false, down: false },
+      history: [],
+      cargoDropped: false,
+      lastU: 0,
+    };
+
+    const plant = {
+      m0: 1.0,
+      k0: 1.0,
+      fadeRate: 0.0065,
+      cargoDropTime: 15,
+      cargoDropFraction: 0.30,
+      floor: 0,
+      ceiling: 12,
+    };
+
+    function clamp(v, lo, hi) {
+      return Math.max(lo, Math.min(hi, v));
+    }
+
+    function fmt(x, digits = 2) {
+      return Number(x).toFixed(digits);
+    }
+
+    function currentMode() {
+      return ui.modeSelect.value;
+    }
+
+    function getParams() {
+      return {
+        kp: parseFloat(ui.kp.value),
+        ki: parseFloat(ui.ki.value),
+        kd: parseFloat(ui.kd.value),
+        uff: parseFloat(ui.ffGain.value),
+        sat: parseFloat(ui.sat.value),
+        manual: parseFloat(ui.manualThrottle.value),
+        duration: parseFloat(ui.simDuration.value),
+        timeScale: parseFloat(ui.timeScale.value),
+      };
+    }
+
+    function updateLabels() {
+      ui.manualThrottleVal.textContent = fmt(ui.manualThrottle.value, 2);
+      ui.ffGainVal.textContent = fmt(ui.ffGain.value, 2);
+      ui.kpVal.textContent = fmt(ui.kp.value, 2);
+      ui.kiVal.textContent = fmt(ui.ki.value, 2);
+      ui.kdVal.textContent = fmt(ui.kd.value, 2);
+      ui.satVal.textContent = fmt(ui.sat.value, 1);
+      ui.modeVal.textContent = currentMode() === 'manual' ? 'Manual' : 'PID + FF';
+      ui.modeVal.className = 'value ' + (currentMode() === 'manual' ? 'mode-manual' : 'mode-pid');
+    }
+
+    function kOfT(t) {
+      return Math.max(0.68, plant.k0 - plant.fadeRate * t);
+    }
+
+    function mOfT(t) {
+      return t >= plant.cargoDropTime ? plant.m0 * (1 - plant.cargoDropFraction) : plant.m0;
+    }
+
+    function reference(t) {
+      const type = ui.refSelect.value;
+      if (type === 'steps') {
+        if (t < 4) return 1.2;
+        if (t < 10) return 4.5;
+        if (t < 18) return 2.5;
+        if (t < 27) return 6.2;
+        if (t < 34) return 3.5;
+        return 5.0;
+      }
+      if (type === 'sine') {
+        return 4 + 2.2 * Math.sin(0.42 * t) + 0.6 * Math.sin(1.2 * t + 0.8);
+      }
+      return 1.6 + 0.12 * t + 1.2 * Math.sin(0.7 * t) + (t > 20 ? 1.3 : 0) - (t > 30 ? 1.0 : 0);
+    }
+
+    function startSimulation() {
+      state.running = true;
+      state.paused = false;
+      state.ended = false;
+      state.t = 0;
+      state.x = 0;
+      state.v = 0;
+      state.eInt = 0;
+      state.prevE = 0;
+      state.scoreRaw = 0;
+      state.history = [];
+      state.cargoDropped = false;
+      state.lastU = 0;
+      state.lastRealTime = performance.now();
+      ui.pauseBtn.textContent = 'Pause';
+      pushHistory(0, 0, reference(0), 0, 0, 0, mOfT(0), kOfT(0));
+      renderAll();
+    }
+
+    function endSimulation() {
+      state.running = false;
+      state.ended = true;
+      renderAll();
+    }
+
+    function pushHistory(t, x, r, u, uff, upid, m, k) {
+      state.history.push({ t, x, r, u, uff, upid, m, k });
+      if (state.history.length > 3000) state.history.shift();
+    }
+
+    function computeControl(dt) {
+      const p = getParams();
+      const r = reference(state.t);
+      const e = r - state.x;
+      let u = 0, uff = 0, upid = 0;
+
+      if (currentMode() === 'manual') {
+        u = p.manual;
+      } else {
+        uff = p.uff;
+        const de = dt > 0 ? (e - state.prevE) / dt : 0;
+
+        const iCandidate = state.eInt + e * dt;
+        upid = p.kp * e + p.ki * iCandidate + p.kd * de;
+        let uUnsat = uff + upid;
+        u = clamp(uUnsat, 0, p.sat);
+
+        // Simple anti-windup: only accept integral growth when not saturating badly
+        if (Math.abs(u - uUnsat) < 1e-8 || Math.sign(e) !== Math.sign(uUnsat - u)) {
+          state.eInt = iCandidate;
+        }
+        upid = p.kp * e + p.ki * state.eInt + p.kd * de;
+        u = clamp(uff + upid, 0, p.sat);
+      }
+
+      state.prevE = e;
+      return { u, uff, upid, r, e };
+    }
+
+    function stepSim(dt) {
+      const { u, uff, upid, r, e } = computeControl(dt);
+      const k = kOfT(state.t);
+      const m = mOfT(state.t);
+      const a = k * u - m * g;
+
+      state.v += a * dt;
+      state.x += state.v * dt;
+
+      if (state.x < plant.floor) {
+        state.x = plant.floor;
+        if (state.v < 0) state.v = 0;
+      }
+      if (state.x > plant.ceiling) {
+        state.x = plant.ceiling;
+        if (state.v > 0) state.v = 0;
+      }
+
+      const du = dt > 0 ? (u - state.lastU) / dt : 0;
+      state.scoreRaw += (1.3 * e * e + 0.012 * u * u + 0.0007 * du * du) * dt;
+      state.lastU = u;
+      state.t += dt;
+
+      if (!state.cargoDropped && state.t >= plant.cargoDropTime) {
+        state.cargoDropped = true;
+      }
+
+      pushHistory(state.t, state.x, r, u, uff, upid, m, k);
+
+      if (state.t >= getParams().duration) {
+        endSimulation();
+      }
+    }
+
+    function scoreValue() {
+      const duration = Math.max(1, getParams().duration);
+      const s = 1000 - 42 * state.scoreRaw / duration;
+      return Math.max(0, Math.round(s));
+    }
+
+    function resizeCanvasToDisplaySize(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.round(rect.width * dpr);
+      const height = Math.round(rect.height * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+      }
+    }
+
+    function drawBackgroundSky(ctx, w, h) {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#0b1324');
+      grad.addColorStop(0.62, '#10203d');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      for (let i = 0; i < 6; i++) {
+        const x = (i * 171 + 70) % w;
+        const y = 55 + (i % 3) * 80;
+        drawCloud(ctx, x, y, 34 + (i % 2) * 10);
+      }
+
+      ctx.fillStyle = '#0b1220';
+      ctx.fillRect(0, h - 46, w, 46);
+      ctx.strokeStyle = 'rgba(148,163,184,0.2)';
+      ctx.beginPath();
+      ctx.moveTo(0, h - 46);
+      ctx.lineTo(w, h - 46);
+      ctx.stroke();
+    }
+
+    function drawCloud(ctx, x, y, r) {
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.7, 0, Math.PI * 2);
+      ctx.arc(x + r * 0.7, y - 6, r * 0.9, 0, Math.PI * 2);
+      ctx.arc(x + r * 1.5, y, r * 0.75, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawDrone() {
+      resizeCanvasToDisplaySize(ui.droneCanvas);
+      const rect = ui.droneCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const ctx = droneCtx;
+      ctx.clearRect(0, 0, w, h);
+
+      drawBackgroundSky(ctx, w, h);
+
+      const marginTop = 36;
+      const marginBottom = 70;
+      const usable = h - marginTop - marginBottom;
+      const yDrone = h - marginBottom - (state.x / plant.ceiling) * usable;
+      const xCenter = w * 0.5;
+
+      // Reference line
+      const r = reference(state.t);
+      const yRef = h - marginBottom - (r / plant.ceiling) * usable;
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
+      ctx.setLineDash([8, 7]);
+      ctx.beginPath();
+      ctx.moveTo(24, yRef);
+      ctx.lineTo(w - 24, yRef);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.95)';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('reference', 28, yRef - 8);
+
+      // Height ruler
+      ctx.strokeStyle = 'rgba(148,163,184,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(36, marginTop);
+      ctx.lineTo(36, h - marginBottom);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(226,232,240,0.9)';
+      ctx.font = '12px sans-serif';
+      for (let i = 0; i <= 6; i++) {
+        const val = (plant.ceiling / 6) * i;
+        const yy = h - marginBottom - (val / plant.ceiling) * usable;
+        ctx.beginPath();
+        ctx.moveTo(30, yy);
+        ctx.lineTo(42, yy);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(0) + ' m', 48, yy + 4);
+      }
+
+      // Drone shadow
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+      const shadowWidth = 120 - 60 * (state.x / plant.ceiling);
+      ctx.beginPath();
+      ctx.ellipse(xCenter, h - 32, shadowWidth, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rotor wash
+      const throttle = state.history.length ? state.history[state.history.length - 1].u : 0;
+      const washAlpha = clamp(throttle / 18, 0.08, 0.9);
+      const washLen = 50 + 90 * washAlpha;
+      const washSpread = 30 + 24 * washAlpha;
+      const grad = ctx.createLinearGradient(0, yDrone + 24, 0, yDrone + 24 + washLen);
+      grad.addColorStop(0, `rgba(56,189,248,${0.18 * washAlpha})`);
+      grad.addColorStop(1, 'rgba(56,189,248,0.0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(xCenter - washSpread, yDrone + 24);
+      ctx.lineTo(xCenter + washSpread, yDrone + 24);
+      ctx.lineTo(xCenter + washSpread * 0.4, yDrone + 24 + washLen);
+      ctx.lineTo(xCenter - washSpread * 0.4, yDrone + 24 + washLen);
+      ctx.closePath();
+      ctx.fill();
+
+      // Drone frame
+      const bob = 2.5 * Math.sin(14 * state.t);
+      const tilt = clamp(-state.v * 0.04, -0.16, 0.16);
+      ctx.save();
+      ctx.translate(xCenter, yDrone + bob);
+      ctx.rotate(tilt);
+
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-62, 0);
+      ctx.lineTo(62, 0);
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-16, -12, 32, 22);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-8, -6, 16, 10);
+
+      // Landing legs
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-18, 10);
+      ctx.lineTo(-28, 22);
+      ctx.moveTo(18, 10);
+      ctx.lineTo(28, 22);
+      ctx.moveTo(-36, 23);
+      ctx.lineTo(-10, 23);
+      ctx.moveTo(10, 23);
+      ctx.lineTo(36, 23);
+      ctx.stroke();
+
+      // Rotors + blur
+      drawRotor(ctx, -50, 0, state.t, throttle);
+      drawRotor(ctx, 50, 0, state.t + 0.4, throttle);
+      ctx.restore();
+
+      // Status box
+      ctx.fillStyle = 'rgba(15,23,42,0.72)';
+      roundRect(ctx, w - 220, 18, 190, 112, 14, true, false);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '13px sans-serif';
+      ctx.fillText(`t = ${fmt(state.t, 1)} s`, w - 200, 44);
+      ctx.fillText(`height = ${fmt(state.x, 2)} m`, w - 200, 64);
+      ctx.fillText(`velocity = ${fmt(state.v, 2)} m/s`, w - 200, 84);
+      ctx.fillText(`score = ${scoreValue()}`, w - 200, 104);
+
+      if (state.t >= plant.cargoDropTime) {
+        ctx.fillStyle = 'rgba(34,197,94,0.95)';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText('cargo dropped', w - 200, 124);
+      }
+    }
+
+    function drawRotor(ctx, x, y, t, throttle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-18, -6);
+      ctx.lineTo(-18, 6);
+      ctx.moveTo(18, -6);
+      ctx.lineTo(18, 6);
+      ctx.stroke();
+
+      const spin = t * (12 + throttle * 1.4);
+      ctx.strokeStyle = `rgba(226,232,240,${0.2 + 0.5 * clamp(throttle / 18, 0, 1)})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-23 * Math.cos(spin), -4 * Math.sin(spin));
+      ctx.lineTo(23 * Math.cos(spin), 4 * Math.sin(spin));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 24, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(56,189,248,0.18)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    function drawPlots() {
+      resizeCanvasToDisplaySize(ui.plotCanvas);
+      const rect = ui.plotCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const ctx = plotCtx;
+      ctx.clearRect(0, 0, w, h);
+
+      const m = { l: 58, r: 20, t: 24, b: 44, gap: 42 };
+      const subplotH = (h - m.t - m.b - m.gap) / 2;
+      const topBox = { x: m.l, y: m.t, w: w - m.l - m.r, h: subplotH };
+      const botBox = { x: m.l, y: m.t + subplotH + m.gap, w: w - m.l - m.r, h: subplotH };
+
+      drawPlotBox(ctx, topBox, 'Height [m]', 0, plant.ceiling);
+      drawPlotBox(ctx, botBox, 'Control u', 0, Math.max(20, parseFloat(ui.sat.value)));
+
+      const T = Math.max(parseFloat(ui.simDuration.value), 1);
+      const xTime = t => topBox.x + (t / T) * topBox.w;
+      const yTop = y => topBox.y + topBox.h - (y / plant.ceiling) * topBox.h;
+      const yBot = y => botBox.y + botBox.h - (y / Math.max(20, parseFloat(ui.sat.value))) * botBox.h;
+
+      // Event marker for cargo drop
+      const xDrop = xTime(plant.cargoDropTime);
+      ctx.strokeStyle = 'rgba(34,197,94,0.7)';
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(xDrop, topBox.y);
+      ctx.lineTo(xDrop, botBox.y + botBox.h);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(34,197,94,0.9)';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('cargo drop', xDrop + 6, topBox.y + 14);
+
+      if (state.history.length < 2) return;
+
+      polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.r), getCss('--lineRef'), 2);
+      polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.x), getCss('--lineHeight'), 2.6);
+      polyline(ctx, state.history, d => xTime(d.t), d => yBot(d.u), getCss('--lineU'), 2.6);
+      polyline(ctx, state.history, d => xTime(d.t), d => yBot(d.uff), getCss('--lineUff'), 1.8);
+      polyline(ctx, state.history, d => xTime(d.t), d => yBot(Math.max(0, d.upid)), getCss('--linePid'), 1.6);
+    }
+
+    function drawPlotBox(ctx, box, ylabel, ymin, ymax) {
+      ctx.fillStyle = 'rgba(15,23,42,0.72)';
+      roundRect(ctx, box.x, box.y, box.w, box.h, 12, true, false);
+
+      ctx.strokeStyle = 'rgba(148,163,184,0.22)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, box.x, box.y, box.w, box.h, 12, false, true);
+
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(ylabel, box.x + 10, box.y + 16);
+
+      const nGridY = 4;
+      for (let i = 0; i <= nGridY; i++) {
+        const frac = i / nGridY;
+        const y = box.y + frac * box.h;
+        ctx.strokeStyle = getCss('--grid');
+        ctx.beginPath();
+        ctx.moveTo(box.x, y);
+        ctx.lineTo(box.x + box.w, y);
+        ctx.stroke();
+
+        const val = ymax - frac * (ymax - ymin);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(val.toFixed(1), 8, y + 4);
+      }
+
+      const T = Math.max(parseFloat(ui.simDuration.value), 1);
+      const nGridX = 8;
+      for (let i = 0; i <= nGridX; i++) {
+        const frac = i / nGridX;
+        const x = box.x + frac * box.w;
+        ctx.strokeStyle = getCss('--grid');
+        ctx.beginPath();
+        ctx.moveTo(x, box.y);
+        ctx.lineTo(x, box.y + box.h);
+        ctx.stroke();
+
+        const val = frac * T;
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(val.toFixed(0) + ' s', x - 10, box.y + box.h + 18);
+      }
+    }
+
+    function polyline(ctx, data, fx, fy, stroke, width) {
+      ctx.beginPath();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      data.forEach((d, i) => {
+        const x = fx(d), y = fy(d);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function getCss(varName) {
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+
+    function updateStats() {
+      ui.scoreVal.textContent = String(scoreValue());
+      ui.heightVal.textContent = `${fmt(state.x, 2)} / ${fmt(reference(state.t), 2)}`;
+      ui.plantVal.textContent = `${fmt(mOfT(state.t), 2)} / ${fmt(kOfT(state.t), 2)}`;
+    }
+
+    function renderAll() {
+      updateLabels();
+      updateStats();
+      drawDrone();
+      drawPlots();
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      if (!state.running || state.paused) {
+        renderAll();
+        state.lastRealTime = now;
+        return;
+      }
+
+      const p = getParams();
+      let dtReal = (now - state.lastRealTime) / 1000;
+      state.lastRealTime = now;
+      dtReal = clamp(dtReal, 0, 0.04);
+      let dtSimTotal = dtReal * p.timeScale;
+
+      const dtMax = 0.01;
+      while (dtSimTotal > 0) {
+        const dt = Math.min(dtMax, dtSimTotal);
+        stepSim(dt);
+        dtSimTotal -= dt;
+        if (!state.running) break;
+      }
+
+      renderAll();
+    }
+
+    function bindEvents() {
+      ui.fullscreenBtn.addEventListener('click', async () => {
+        try {
+          if (!document.fullscreenElement) {
+            await document.documentElement.requestFullscreen();
+          } else {
+            await document.exitFullscreen();
+          }
+          setTimeout(renderAll, 50);
+        } catch (err) {
+          console.warn('Fullscreen request failed:', err);
+        }
+      });
+
+      document.addEventListener('fullscreenchange', () => {
+        ui.fullscreenBtn.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
+        setTimeout(renderAll, 50);
+      });
+      [ui.manualThrottle, ui.ffGain, ui.kp, ui.ki, ui.kd, ui.sat].forEach(el => {
+        el.addEventListener('input', updateLabels);
+      });
+      ui.modeSelect.addEventListener('change', updateLabels);
+      ui.startBtn.addEventListener('click', startSimulation);
+      ui.pauseBtn.addEventListener('click', () => {
+        if (!state.running && !state.ended) return;
+        if (state.ended) {
+          startSimulation();
+          return;
+        }
+        state.paused = !state.paused;
+        ui.pauseBtn.textContent = state.paused ? 'Resume' : 'Pause';
+      });
+      ui.demoBtn.addEventListener('click', () => {
+        ui.ffGain.value = '9.81';
+        ui.kp.value = '7.0';
+        ui.ki.value = '2.2';
+        ui.kd.value = '5.4';
+        ui.sat.value = '18';
+        ui.modeSelect.value = 'pid';
+        updateLabels();
+      });
+
+      window.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+          state.keys.up = true;
+          e.preventDefault();
+        }
+        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+          state.keys.down = true;
+          e.preventDefault();
+        }
+        if (e.key === ' ') {
+          if (state.running) {
+            state.paused = !state.paused;
+            ui.pauseBtn.textContent = state.paused ? 'Resume' : 'Pause';
+          }
+          e.preventDefault();
+        }
+      });
+
+      window.addEventListener('keyup', e => {
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') state.keys.up = false;
+        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') state.keys.down = false;
+      });
+
+      window.addEventListener('resize', renderAll);
+      window.addEventListener('orientationchange', renderAll);
+
+      // Manual throttle nudging loop
+      setInterval(() => {
+        if (currentMode() !== 'manual') return;
+        let val = parseFloat(ui.manualThrottle.value);
+        if (state.keys.up) val += 0.18;
+        if (state.keys.down) val -= 0.18;
+        val = clamp(val, 0, 20);
+        ui.manualThrottle.value = String(val);
+        updateLabels();
+      }, 30);
+    }
+
+    bindEvents();
+    updateLabels();
+    renderAll();
+    requestAnimationFrame((t) => {
+      state.lastRealTime = t;
+      requestAnimationFrame(animate);
+    });
+  </script>
+</body>
+</html>
