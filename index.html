@@ -6,115 +6,120 @@
   <title>Drone Height Control Game</title>
   <style>
     :root {
-      --bg: #0f172a;
+      --bg: #0b1220;
       --panel: #111827;
       --panel2: #1f2937;
       --text: #e5e7eb;
       --muted: #94a3b8;
-      --accent: #38bdf8;
-      --accent2: #a78bfa;
-      --good: #22c55e;
-      --warn: #f59e0b;
-      --bad: #ef4444;
-      --grid: rgba(148, 163, 184, 0.16);
       --lineRef: #f59e0b;
       --lineHeight: #38bdf8;
       --lineU: #a78bfa;
       --lineUff: #22c55e;
       --linePid: #ef4444;
+      --grid: rgba(148, 163, 184, 0.14);
     }
 
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
       color: var(--text);
+      overflow: hidden;
     }
 
     .app {
-      display: grid;
-      grid-template-rows: auto auto 1fr auto;
       height: 100vh;
-      gap: 10px;
-      padding: 10px;
-      overflow: hidden;
-    }
-
-    .topbar, .footer {
       display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 12px;
-      align-items: start;
+      grid-template-rows: auto auto 1fr;
+      gap: 6px;
+      padding: 6px;
       overflow: hidden;
     }
 
-    .main {
+    .bar, .stats, .panel {
+      background: rgba(17, 24, 39, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 12px;
+      min-width: 0;
+    }
+
+    .bar {
+      padding: 6px 8px;
       display: grid;
-      grid-template-columns: 1.05fr 1.35fr;
-      gap: 10px;
-      min-height: 0;
+      grid-template-columns: 0.9fr 1.1fr 1.2fr 1.6fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 0.95rem;
+      white-space: nowrap;
       overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .panel {
-      background: rgba(17, 24, 39, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.15);
-      border-radius: 18px;
-      padding: 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.24);
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .section-title {
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin: 0 0 8px;
-      color: #f8fafc;
-      letter-spacing: 0.02em;
-    }
-
-    .small {
-      color: var(--muted);
-      font-size: 0.85rem;
-      line-height: 1.35;
-    }
-
-    .controls-grid {
+    .group {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px 14px;
+      gap: 6px;
+      min-width: 0;
+      align-items: center;
     }
 
-    .control-row {
-      display: grid;
-      gap: 4px;
+    .group.pid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    label {
-      font-size: 0.8rem;
+    .field {
+      min-width: 0;
+    }
+
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 2px;
+      font-size: 0.64rem;
       color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    .field .v {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    select, input[type="number"], button {
+      width: 100%;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 0.78rem;
+      padding: 0 8px;
     }
 
     input[type="range"] {
       width: 100%;
-    }
-
-    input[type="number"], select, button {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      background: var(--panel2);
-      color: var(--text);
-      font-size: 0.95rem;
+      margin: 0;
+      height: 18px;
     }
 
     button {
       cursor: pointer;
-      background: linear-gradient(180deg, #1d4ed8, #1e40af);
       border: none;
+      background: linear-gradient(180deg, #1d4ed8, #1e40af);
       font-weight: 700;
     }
 
@@ -122,211 +127,189 @@
       background: linear-gradient(180deg, #374151, #1f2937);
     }
 
-    button:hover { filter: brightness(1.08); }
-
     .buttons {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 8px;
+      gap: 6px;
     }
 
     .stats {
+      padding: 5px 8px;
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
+      gap: 6px;
     }
 
     .stat {
-      background: rgba(31, 41, 55, 0.85);
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      border-radius: 14px;
-      padding: 10px;
+      min-width: 0;
     }
 
     .stat .name {
+      font-size: 0.60rem;
       color: var(--muted);
-      font-size: 0.75rem;
-      margin-bottom: 4px;
+      margin-bottom: 1px;
     }
 
     .stat .value {
-      font-size: 1.2rem;
+      font-size: 0.92rem;
       font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .mode-manual { color: var(--warn); }
-    .mode-pid { color: var(--good); }
+    .mode-manual { color: #f59e0b; }
+    .mode-pid { color: #22c55e; }
+
+    .main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 0.92fr 1.35fr;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .panel {
+      padding: 6px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
 
     .canvas-wrap {
-      position: relative;
       min-height: 0;
       height: 100%;
       overflow: hidden;
     }
 
     canvas {
-      max-height: 100%;
       width: 100%;
       height: 100%;
       display: block;
-      border-radius: 14px;
+      border-radius: 10px;
       background: linear-gradient(180deg, #0b1324 0%, #0f172a 55%, #111827 100%);
     }
 
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 8px;
-      font-size: 0.8rem;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 0.64rem;
       color: #cbd5e1;
     }
 
     .legend span {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
 
     .swatch {
-      width: 14px;
-      height: 4px;
+      width: 12px;
+      height: 3px;
       border-radius: 999px;
       display: inline-block;
     }
 
-    .footer {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 12px;
-      align-items: start;
+    @media (max-width: 1180px) {
+      .bar {
+        grid-template-columns: 1fr 1fr;
+      }
+      .group.pid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .main {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .kbd {
-      display: inline-block;
-      padding: 2px 7px;
-      border-radius: 8px;
-      background: #1f2937;
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      font-size: 0.8rem;
-    }
-
-    .highlight {
-      color: #f8fafc;
-      font-weight: 700;
-    }
-
-    @media (max-width: 1100px) {
-      .topbar { grid-template-columns: 1fr 1fr; }
-      .main { grid-template-columns: 1fr; }
-      .footer { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-      .main { grid-template-columns: 1fr; }
-      .footer { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (max-width: 720px) {
-      .topbar { grid-template-columns: 1fr; }
-      .controls-grid { grid-template-columns: 1fr; }
-      .buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .stats { grid-template-columns: 1fr 1fr; }
-    }
+    @media (max-width: 760px) {
+      .app {
+        grid-template-rows: auto auto 1fr;
+      }
+      .bar {
+        grid-template-columns: 1fr;
+      }
+      .group, .group.pid, .buttons, .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <div class="topbar">
-      <div>
-        <h2 style="margin:0 0 6px;">Drone Height Control Game</h2>
-        <div class="small">
-          Learn manual control and PID + feedforward control for a simple vertical drone model.
-          The plant changes during flight: <span class="highlight">battery fades slowly</span> and a
-          <span class="highlight">cargo drop happens at 15 s</span>.
+    <div class="bar">
+      <div class="brand">
+        <h1>Drone Height Control Game</h1>
+      </div>
+
+      <div class="group">
+        <div class="field">
+          <label for="modeSelect"><span>Mode</span></label>
+          <select id="modeSelect">
+            <option value="manual">Manual</option>
+            <option value="pid">PID + FF</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="refSelect"><span>Reference</span></label>
+          <select id="refSelect">
+            <option value="steps">Steps</option>
+            <option value="sine">Sine</option>
+            <option value="challenge">Challenge</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="simDuration"><span>T [s]</span></label>
+          <input id="simDuration" type="number" min="10" max="120" step="1" value="40" />
+        </div>
+        <div class="field">
+          <label for="timeScale"><span>Speed</span></label>
+          <input id="timeScale" type="number" min="0.25" max="4" step="0.25" value="1" />
         </div>
       </div>
 
-      <div>
-        <div class="section-title">Mode and reference</div>
-        <div class="controls-grid">
-          <div class="control-row">
-            <label for="modeSelect">Control mode</label>
-            <select id="modeSelect">
-              <option value="manual">Manual throttle</option>
-              <option value="pid">PID + feedforward</option>
-            </select>
-          </div>
-          <div class="control-row">
-            <label for="refSelect">Reference profile</label>
-            <select id="refSelect">
-              <option value="steps">Step track</option>
-              <option value="sine">Smooth sine</option>
-              <option value="challenge">Challenge mix</option>
-            </select>
-          </div>
-          <div class="control-row">
-            <label for="simDuration">Duration [s]</label>
-            <input id="simDuration" type="number" min="10" max="120" step="1" value="40" />
-          </div>
-          <div class="control-row">
-            <label for="timeScale">Simulation speed</label>
-            <input id="timeScale" type="number" min="0.25" max="4" step="0.25" value="1" />
-          </div>
+      <div class="group">
+        <div class="field">
+          <label for="manualThrottle"><span>Manual u</span><span class="v" id="manualThrottleVal">9.81</span></label>
+          <input id="manualThrottle" type="range" min="0" max="20" step="0.01" value="9.81" />
         </div>
-        <div class="buttons">
-          <button id="startBtn">Start / Restart</button>
+        <div class="field">
+          <label for="ffGain"><span>FF</span><span class="v" id="ffGainVal">9.81</span></label>
+          <input id="ffGain" type="range" min="0" max="20" step="0.01" value="9.81" />
+        </div>
+        <div class="buttons" style="grid-column: 1 / -1;">
+          <button id="startBtn">Start</button>
           <button id="pauseBtn" class="secondary">Pause</button>
-          <button id="demoBtn" class="secondary">Load decent PID</button>
+          <button id="demoBtn" class="secondary">Good PID</button>
           <button id="fullscreenBtn" class="secondary">Fullscreen</button>
         </div>
       </div>
 
-      <div>
-        <div class="section-title">Manual or feedforward</div>
-        <div class="controls-grid">
-          <div class="control-row">
-            <label for="manualThrottle">Manual throttle u</label>
-            <input id="manualThrottle" type="range" min="0" max="20" step="0.01" value="9.81" />
-            <div class="small"><span id="manualThrottleVal">9.81</span></div>
-          </div>
-          <div class="control-row">
-            <label for="ffGain">Feedforward gain kff</label>
-            <input id="ffGain" type="range" min="0" max="20" step="0.01" value="9.81" />
-            <div class="small"><span id="ffGainVal">9.81</span></div>
-          </div>
+      <div class="group pid">
+        <div class="field">
+          <label for="kp"><span>Kp</span><span class="v" id="kpVal">7.00</span></label>
+          <input id="kp" type="range" min="0" max="20" step="0.01" value="7.0" />
         </div>
-        <div class="small" style="margin-top:8px;">
-          In manual mode, use the slider or keyboard: <span class="kbd">↑</span>/<span class="kbd">W</span>
-          to increase thrust and <span class="kbd">↓</span>/<span class="kbd">S</span> to decrease thrust.
+        <div class="field">
+          <label for="ki"><span>Ki</span><span class="v" id="kiVal">2.20</span></label>
+          <input id="ki" type="range" min="0" max="15" step="0.01" value="2.2" />
         </div>
-      </div>
-
-      <div>
-        <div class="section-title">PID tuning</div>
-        <div class="controls-grid">
-          <div class="control-row">
-            <label for="kp">Kp</label>
-            <input id="kp" type="range" min="0" max="20" step="0.01" value="7.0" />
-            <div class="small"><span id="kpVal">7.00</span></div>
-          </div>
-          <div class="control-row">
-            <label for="ki">Ki</label>
-            <input id="ki" type="range" min="0" max="15" step="0.01" value="2.2" />
-            <div class="small"><span id="kiVal">2.20</span></div>
-          </div>
-          <div class="control-row">
-            <label for="kd">Kd</label>
-            <input id="kd" type="range" min="0" max="10" step="0.01" value="5.4" />
-            <div class="small"><span id="kdVal">5.40</span></div>
-          </div>
-          <div class="control-row">
-            <label for="sat">Saturation |u|max</label>
-            <input id="sat" type="range" min="2" max="30" step="0.1" value="18" />
-            <div class="small"><span id="satVal">18.0</span></div>
-          </div>
+        <div class="field">
+          <label for="kd"><span>Kd</span><span class="v" id="kdVal">5.40</span></label>
+          <input id="kd" type="range" min="0" max="10" step="0.01" value="5.4" />
+        </div>
+        <div class="field">
+          <label for="sat"><span>Sat</span><span class="v" id="satVal">18.0</span></label>
+          <input id="sat" type="range" min="2" max="30" step="0.1" value="18" />
         </div>
       </div>
     </div>
@@ -341,7 +324,7 @@
         <div class="value" id="modeVal">Manual</div>
       </div>
       <div class="stat">
-        <div class="name">Height / Ref [m]</div>
+        <div class="name">Height / Ref</div>
         <div class="value" id="heightVal">0.00 / 0.00</div>
       </div>
       <div class="stat">
@@ -352,44 +335,19 @@
 
     <div class="main">
       <div class="panel">
-        <div class="section-title">Drone view</div>
-        <div class="canvas-wrap"><canvas id="droneCanvas" width="900" height="620"></canvas></div>
-        <div class="small" style="margin-top:8px;">
-          The drone must track the target height while the plant changes. Battery fade reduces thrust authority via
-          <span class="highlight">k(t)</span>, and at <span class="highlight">15 s</span> the payload is dropped so
-          <span class="highlight">m(t)</span> decreases by 30%.
-        </div>
+        <div class="title">Drone</div>
+        <div class="canvas-wrap"><canvas id="droneCanvas"></canvas></div>
       </div>
 
       <div class="panel">
-        <div class="section-title">Streaming plots</div>
-        <div class="canvas-wrap"><canvas id="plotCanvas" width="1100" height="620"></canvas></div>
+        <div class="title">Plots</div>
+        <div class="canvas-wrap"><canvas id="plotCanvas"></canvas></div>
         <div class="legend">
-          <span><i class="swatch" style="background: var(--lineRef);"></i> Reference</span>
-          <span><i class="swatch" style="background: var(--lineHeight);"></i> Height</span>
-          <span><i class="swatch" style="background: var(--lineU);"></i> Total control u</span>
-          <span><i class="swatch" style="background: var(--lineUff);"></i> Feedforward part</span>
-          <span><i class="swatch" style="background: var(--linePid);"></i> PID part</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div>
-        <div class="section-title">Model</div>
-        <div class="small">
-          The simulated drone follows
-          <code style="color:#f8fafc;">x¨(t) = k(t)u(t) - m(t)g</code> with state <code style="color:#f8fafc;">x</code> = height.
-          A good feedforward guess is roughly <code style="color:#f8fafc;">u_ff ≈ m_nom g / k_nom</code>, and PID then corrects the remaining error.
-          The score penalizes tracking error, control effort, and large control moves.
-        </div>
-      </div>
-      <div>
-        <div class="section-title">Teaching tips</div>
-        <div class="small">
-          Start in <span class="highlight">manual mode</span> so students feel how difficult it is to reject plant changes.
-          Then switch to <span class="highlight">PID + feedforward</span> and discuss why feedforward removes most of the steady thrust demand,
-          while integral action compensates for battery fade and the mass drop.
+          <span><i class="swatch" style="background: var(--lineRef);"></i>ref</span>
+          <span><i class="swatch" style="background: var(--lineHeight);"></i>height</span>
+          <span><i class="swatch" style="background: var(--lineU);"></i>u</span>
+          <span><i class="swatch" style="background: var(--lineUff);"></i>ff</span>
+          <span><i class="swatch" style="background: var(--linePid);"></i>pid</span>
         </div>
       </div>
     </div>
@@ -558,13 +516,10 @@
       } else {
         uff = p.uff;
         const de = dt > 0 ? (e - state.prevE) / dt : 0;
-
         const iCandidate = state.eInt + e * dt;
         upid = p.kp * e + p.ki * iCandidate + p.kd * de;
         let uUnsat = uff + upid;
         u = clamp(uUnsat, 0, p.sat);
-
-        // Simple anti-windup: only accept integral growth when not saturating badly
         if (Math.abs(u - uUnsat) < 1e-8 || Math.sign(e) !== Math.sign(uUnsat - u)) {
           state.eInt = iCandidate;
         }
@@ -619,8 +574,8 @@
     function resizeCanvasToDisplaySize(canvas) {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      const width = Math.round(rect.width * dpr);
-      const height = Math.round(rect.height * dpr);
+      const width = Math.max(1, Math.round(rect.width * dpr));
+      const height = Math.max(1, Math.round(rect.height * dpr));
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
@@ -628,30 +583,6 @@
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
       }
-    }
-
-    function drawBackgroundSky(ctx, w, h) {
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, '#0b1324');
-      grad.addColorStop(0.62, '#10203d');
-      grad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      for (let i = 0; i < 6; i++) {
-        const x = (i * 171 + 70) % w;
-        const y = 55 + (i % 3) * 80;
-        drawCloud(ctx, x, y, 34 + (i % 2) * 10);
-      }
-
-      ctx.fillStyle = '#0b1220';
-      ctx.fillRect(0, h - 46, w, 46);
-      ctx.strokeStyle = 'rgba(148,163,184,0.2)';
-      ctx.beginPath();
-      ctx.moveTo(0, h - 46);
-      ctx.lineTo(w, h - 46);
-      ctx.stroke();
     }
 
     function drawCloud(ctx, x, y, r) {
@@ -662,159 +593,21 @@
       ctx.fill();
     }
 
-    function drawDrone() {
-      resizeCanvasToDisplaySize(ui.droneCanvas);
-      const rect = ui.droneCanvas.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
-      const ctx = droneCtx;
-      ctx.clearRect(0, 0, w, h);
-
-      drawBackgroundSky(ctx, w, h);
-
-      const marginTop = 36;
-      const marginBottom = 70;
-      const usable = h - marginTop - marginBottom;
-      const yDrone = h - marginBottom - (state.x / plant.ceiling) * usable;
-      const xCenter = w * 0.5;
-
-      // Reference line
-      const r = reference(state.t);
-      const yRef = h - marginBottom - (r / plant.ceiling) * usable;
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
-      ctx.setLineDash([8, 7]);
-      ctx.beginPath();
-      ctx.moveTo(24, yRef);
-      ctx.lineTo(w - 24, yRef);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.95)';
-      ctx.font = '12px sans-serif';
-      ctx.fillText('reference', 28, yRef - 8);
-
-      // Height ruler
-      ctx.strokeStyle = 'rgba(148,163,184,0.35)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(36, marginTop);
-      ctx.lineTo(36, h - marginBottom);
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(226,232,240,0.9)';
-      ctx.font = '12px sans-serif';
-      for (let i = 0; i <= 6; i++) {
-        const val = (plant.ceiling / 6) * i;
-        const yy = h - marginBottom - (val / plant.ceiling) * usable;
-        ctx.beginPath();
-        ctx.moveTo(30, yy);
-        ctx.lineTo(42, yy);
-        ctx.stroke();
-        ctx.fillText(val.toFixed(0) + ' m', 48, yy + 4);
-      }
-
-      // Drone shadow
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
-      const shadowWidth = 120 - 60 * (state.x / plant.ceiling);
-      ctx.beginPath();
-      ctx.ellipse(xCenter, h - 32, shadowWidth, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Rotor wash
-      const throttle = state.history.length ? state.history[state.history.length - 1].u : 0;
-      const washAlpha = clamp(throttle / 18, 0.08, 0.9);
-      const washLen = 50 + 90 * washAlpha;
-      const washSpread = 30 + 24 * washAlpha;
-      const grad = ctx.createLinearGradient(0, yDrone + 24, 0, yDrone + 24 + washLen);
-      grad.addColorStop(0, `rgba(56,189,248,${0.18 * washAlpha})`);
-      grad.addColorStop(1, 'rgba(56,189,248,0.0)');
+    function drawBackgroundSky(ctx, w, h) {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#0b1324');
+      grad.addColorStop(0.62, '#10203d');
+      grad.addColorStop(1, '#0f172a');
       ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(xCenter - washSpread, yDrone + 24);
-      ctx.lineTo(xCenter + washSpread, yDrone + 24);
-      ctx.lineTo(xCenter + washSpread * 0.4, yDrone + 24 + washLen);
-      ctx.lineTo(xCenter - washSpread * 0.4, yDrone + 24 + washLen);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(0, 0, w, h);
 
-      // Drone frame
-      const bob = 2.5 * Math.sin(14 * state.t);
-      const tilt = clamp(-state.v * 0.04, -0.16, 0.16);
-      ctx.save();
-      ctx.translate(xCenter, yDrone + bob);
-      ctx.rotate(tilt);
-
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-62, 0);
-      ctx.lineTo(62, 0);
-      ctx.stroke();
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(-16, -12, 32, 22);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(-8, -6, 16, 10);
-
-      // Landing legs
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-18, 10);
-      ctx.lineTo(-28, 22);
-      ctx.moveTo(18, 10);
-      ctx.lineTo(28, 22);
-      ctx.moveTo(-36, 23);
-      ctx.lineTo(-10, 23);
-      ctx.moveTo(10, 23);
-      ctx.lineTo(36, 23);
-      ctx.stroke();
-
-      // Rotors + blur
-      drawRotor(ctx, -50, 0, state.t, throttle);
-      drawRotor(ctx, 50, 0, state.t + 0.4, throttle);
-      ctx.restore();
-
-      // Status box
-      ctx.fillStyle = 'rgba(15,23,42,0.72)';
-      roundRect(ctx, w - 220, 18, 190, 112, 14, true, false);
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = '13px sans-serif';
-      ctx.fillText(`t = ${fmt(state.t, 1)} s`, w - 200, 44);
-      ctx.fillText(`height = ${fmt(state.x, 2)} m`, w - 200, 64);
-      ctx.fillText(`velocity = ${fmt(state.v, 2)} m/s`, w - 200, 84);
-      ctx.fillText(`score = ${scoreValue()}`, w - 200, 104);
-
-      if (state.t >= plant.cargoDropTime) {
-        ctx.fillStyle = 'rgba(34,197,94,0.95)';
-        ctx.font = 'bold 13px sans-serif';
-        ctx.fillText('cargo dropped', w - 200, 124);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      for (let i = 0; i < 4; i++) {
+        drawCloud(ctx, 70 + i * (w * 0.22), 45 + (i % 2) * 50, 24);
       }
-    }
 
-    function drawRotor(ctx, x, y, t, throttle) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-18, -6);
-      ctx.lineTo(-18, 6);
-      ctx.moveTo(18, -6);
-      ctx.lineTo(18, 6);
-      ctx.stroke();
-
-      const spin = t * (12 + throttle * 1.4);
-      ctx.strokeStyle = `rgba(226,232,240,${0.2 + 0.5 * clamp(throttle / 18, 0, 1)})`;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(-23 * Math.cos(spin), -4 * Math.sin(spin));
-      ctx.lineTo(23 * Math.cos(spin), 4 * Math.sin(spin));
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(0, 0, 24, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(56,189,248,0.18)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
+      ctx.fillStyle = '#0b1220';
+      ctx.fillRect(0, h - 32, w, 32);
     }
 
     function roundRect(ctx, x, y, w, h, r, fill, stroke) {
@@ -829,91 +622,138 @@
       if (stroke) ctx.stroke();
     }
 
-    function drawPlots() {
-      resizeCanvasToDisplaySize(ui.plotCanvas);
-      const rect = ui.plotCanvas.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
-      const ctx = plotCtx;
-      ctx.clearRect(0, 0, w, h);
-
-      const m = { l: 58, r: 20, t: 24, b: 44, gap: 42 };
-      const subplotH = (h - m.t - m.b - m.gap) / 2;
-      const topBox = { x: m.l, y: m.t, w: w - m.l - m.r, h: subplotH };
-      const botBox = { x: m.l, y: m.t + subplotH + m.gap, w: w - m.l - m.r, h: subplotH };
-
-      drawPlotBox(ctx, topBox, 'Height [m]', 0, plant.ceiling);
-      drawPlotBox(ctx, botBox, 'Control u', 0, Math.max(20, parseFloat(ui.sat.value)));
-
-      const T = Math.max(parseFloat(ui.simDuration.value), 1);
-      const xTime = t => topBox.x + (t / T) * topBox.w;
-      const yTop = y => topBox.y + topBox.h - (y / plant.ceiling) * topBox.h;
-      const yBot = y => botBox.y + botBox.h - (y / Math.max(20, parseFloat(ui.sat.value))) * botBox.h;
-
-      // Event marker for cargo drop
-      const xDrop = xTime(plant.cargoDropTime);
-      ctx.strokeStyle = 'rgba(34,197,94,0.7)';
-      ctx.setLineDash([6, 6]);
+    function drawRotor(ctx, x, y, t, throttle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.moveTo(xDrop, topBox.y);
-      ctx.lineTo(xDrop, botBox.y + botBox.h);
+      ctx.moveTo(-14, -5);
+      ctx.lineTo(-14, 5);
+      ctx.moveTo(14, -5);
+      ctx.lineTo(14, 5);
       ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(34,197,94,0.9)';
-      ctx.font = '12px sans-serif';
-      ctx.fillText('cargo drop', xDrop + 6, topBox.y + 14);
 
-      if (state.history.length < 2) return;
-
-      polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.r), getCss('--lineRef'), 2);
-      polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.x), getCss('--lineHeight'), 2.6);
-      polyline(ctx, state.history, d => xTime(d.t), d => yBot(d.u), getCss('--lineU'), 2.6);
-      polyline(ctx, state.history, d => xTime(d.t), d => yBot(d.uff), getCss('--lineUff'), 1.8);
-      polyline(ctx, state.history, d => xTime(d.t), d => yBot(Math.max(0, d.upid)), getCss('--linePid'), 1.6);
+      const spin = t * (12 + throttle * 1.4);
+      ctx.strokeStyle = `rgba(226,232,240,${0.18 + 0.5 * clamp(throttle / 18, 0, 1)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-18 * Math.cos(spin), -3 * Math.sin(spin));
+      ctx.lineTo(18 * Math.cos(spin), 3 * Math.sin(spin));
+      ctx.stroke();
+      ctx.restore();
     }
 
-    function drawPlotBox(ctx, box, ylabel, ymin, ymax) {
-      ctx.fillStyle = 'rgba(15,23,42,0.72)';
-      roundRect(ctx, box.x, box.y, box.w, box.h, 12, true, false);
+    function drawDrone() {
+      resizeCanvasToDisplaySize(ui.droneCanvas);
+      const rect = ui.droneCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const ctx = droneCtx;
+      ctx.clearRect(0, 0, w, h);
+      drawBackgroundSky(ctx, w, h);
 
-      ctx.strokeStyle = 'rgba(148,163,184,0.22)';
-      ctx.lineWidth = 1;
-      roundRect(ctx, box.x, box.y, box.w, box.h, 12, false, true);
+      const marginTop = 20;
+      const marginBottom = 42;
+      const usable = Math.max(20, h - marginTop - marginBottom);
+      const yDrone = h - marginBottom - (state.x / plant.ceiling) * usable;
+      const xCenter = w * 0.52;
 
-      ctx.font = '12px sans-serif';
+      const r = reference(state.t);
+      const yRef = h - marginBottom - (r / plant.ceiling) * usable;
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(16, yRef);
+      ctx.lineTo(w - 16, yRef);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.strokeStyle = 'rgba(148,163,184,0.30)';
+      ctx.beginPath();
+      ctx.moveTo(24, marginTop);
+      ctx.lineTo(24, h - marginBottom);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(226,232,240,0.8)';
+      ctx.font = '11px sans-serif';
+      for (let i = 0; i <= 4; i++) {
+        const val = (plant.ceiling / 4) * i;
+        const yy = h - marginBottom - (val / plant.ceiling) * usable;
+        ctx.beginPath();
+        ctx.moveTo(20, yy);
+        ctx.lineTo(28, yy);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(0), 34, yy + 4);
+      }
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.42)';
+      ctx.beginPath();
+      ctx.ellipse(xCenter, h - 20, 70 - 28 * (state.x / plant.ceiling), 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const throttle = state.history.length ? state.history[state.history.length - 1].u : 0;
+      const washAlpha = clamp(throttle / 18, 0.08, 0.9);
+      const washLen = 30 + 55 * washAlpha;
+      const washSpread = 18 + 15 * washAlpha;
+      const grad = ctx.createLinearGradient(0, yDrone + 18, 0, yDrone + 18 + washLen);
+      grad.addColorStop(0, `rgba(56,189,248,${0.14 * washAlpha})`);
+      grad.addColorStop(1, 'rgba(56,189,248,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(xCenter - washSpread, yDrone + 18);
+      ctx.lineTo(xCenter + washSpread, yDrone + 18);
+      ctx.lineTo(xCenter + washSpread * 0.45, yDrone + 18 + washLen);
+      ctx.lineTo(xCenter - washSpread * 0.45, yDrone + 18 + washLen);
+      ctx.closePath();
+      ctx.fill();
+
+      const bob = 2 * Math.sin(14 * state.t);
+      const tilt = clamp(-state.v * 0.03, -0.12, 0.12);
+      ctx.save();
+      ctx.translate(xCenter, yDrone + bob);
+      ctx.rotate(tilt);
+
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-42, 0);
+      ctx.lineTo(42, 0);
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-12, -9, 24, 18);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-6, -5, 12, 8);
+
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-14, 9);
+      ctx.lineTo(-20, 17);
+      ctx.moveTo(14, 9);
+      ctx.lineTo(20, 17);
+      ctx.moveTo(-26, 18);
+      ctx.lineTo(-8, 18);
+      ctx.moveTo(8, 18);
+      ctx.lineTo(26, 18);
+      ctx.stroke();
+
+      drawRotor(ctx, -34, 0, state.t, throttle);
+      drawRotor(ctx, 34, 0, state.t + 0.4, throttle);
+      ctx.restore();
+
+      ctx.fillStyle = 'rgba(15,23,42,0.74)';
+      roundRect(ctx, w - 116, 10, 104, 58, 10, true, false);
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillText(ylabel, box.x + 10, box.y + 16);
+      ctx.font = '11px sans-serif';
+      ctx.fillText(`t ${fmt(state.t, 1)} s`, w - 104, 28);
+      ctx.fillText(`x ${fmt(state.x, 2)} m`, w - 104, 43);
+      ctx.fillText(`v ${fmt(state.v, 2)}`, w - 104, 58);
+    }
 
-      const nGridY = 4;
-      for (let i = 0; i <= nGridY; i++) {
-        const frac = i / nGridY;
-        const y = box.y + frac * box.h;
-        ctx.strokeStyle = getCss('--grid');
-        ctx.beginPath();
-        ctx.moveTo(box.x, y);
-        ctx.lineTo(box.x + box.w, y);
-        ctx.stroke();
-
-        const val = ymax - frac * (ymax - ymin);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillText(val.toFixed(1), 8, y + 4);
-      }
-
-      const T = Math.max(parseFloat(ui.simDuration.value), 1);
-      const nGridX = 8;
-      for (let i = 0; i <= nGridX; i++) {
-        const frac = i / nGridX;
-        const x = box.x + frac * box.w;
-        ctx.strokeStyle = getCss('--grid');
-        ctx.beginPath();
-        ctx.moveTo(x, box.y);
-        ctx.lineTo(x, box.y + box.h);
-        ctx.stroke();
-
-        const val = frac * T;
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillText(val.toFixed(0) + ' s', x - 10, box.y + box.h + 18);
-      }
+    function getCss(varName) {
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
     }
 
     function polyline(ctx, data, fx, fy, stroke, width) {
@@ -928,8 +768,85 @@
       ctx.stroke();
     }
 
-    function getCss(varName) {
-      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    function drawPlotBox(ctx, box, ylabel, ymin, ymax) {
+      ctx.fillStyle = 'rgba(15,23,42,0.72)';
+      roundRect(ctx, box.x, box.y, box.w, box.h, 10, true, false);
+      ctx.strokeStyle = 'rgba(148,163,184,0.20)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, box.x, box.y, box.w, box.h, 10, false, true);
+
+      ctx.font = '11px sans-serif';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(ylabel, box.x + 8, box.y + 14);
+
+      const nGridY = 4;
+      for (let i = 0; i <= nGridY; i++) {
+        const frac = i / nGridY;
+        const y = box.y + frac * box.h;
+        ctx.strokeStyle = getCss('--grid');
+        ctx.beginPath();
+        ctx.moveTo(box.x, y);
+        ctx.lineTo(box.x + box.w, y);
+        ctx.stroke();
+
+        const val = ymax - frac * (ymax - ymin);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(val.toFixed(1), 6, y + 4);
+      }
+
+      const T = Math.max(parseFloat(ui.simDuration.value), 1);
+      const nGridX = 6;
+      for (let i = 0; i <= nGridX; i++) {
+        const frac = i / nGridX;
+        const x = box.x + frac * box.w;
+        ctx.strokeStyle = getCss('--grid');
+        ctx.beginPath();
+        ctx.moveTo(x, box.y);
+        ctx.lineTo(x, box.y + box.h);
+        ctx.stroke();
+
+        const val = frac * T;
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(val.toFixed(0), x - 5, box.y + box.h + 14);
+      }
+    }
+
+    function drawPlots() {
+      resizeCanvasToDisplaySize(ui.plotCanvas);
+      const rect = ui.plotCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const ctx = plotCtx;
+      ctx.clearRect(0, 0, w, h);
+
+      const m = { l: 42, r: 12, t: 18, b: 30, gap: 20 };
+      const subplotH = (h - m.t - m.b - m.gap) / 2;
+      const topBox = { x: m.l, y: m.t, w: w - m.l - m.r, h: subplotH };
+      const botBox = { x: m.l, y: m.t + subplotH + m.gap, w: w - m.l - m.r, h: subplotH };
+
+      drawPlotBox(ctx, topBox, 'height [m]', 0, plant.ceiling);
+      drawPlotBox(ctx, botBox, 'u', 0, Math.max(20, parseFloat(ui.sat.value)));
+
+      const T = Math.max(parseFloat(ui.simDuration.value), 1);
+      const xTime = t => topBox.x + (t / T) * topBox.w;
+      const yTop = y => topBox.y + topBox.h - (y / plant.ceiling) * topBox.h;
+      const yBot = y => botBox.y + botBox.h - (y / Math.max(20, parseFloat(ui.sat.value))) * botBox.h;
+
+      const xDrop = xTime(Math.min(plant.cargoDropTime, T));
+      ctx.strokeStyle = 'rgba(34,197,94,0.7)';
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(xDrop, topBox.y);
+      ctx.lineTo(xDrop, botBox.y + botBox.h);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (state.history.length < 2) return;
+      polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.r), getCss('--lineRef'), 1.8);
+      polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.x), getCss('--lineHeight'), 2.3);
+      polyline(ctx, state.history, d => xTime(d.t), d => yBot(d.u), getCss('--lineU'), 2.0);
+      polyline(ctx, state.history, d => xTime(d.t), d => yBot(d.uff), getCss('--lineUff'), 1.2);
+      polyline(ctx, state.history, d => xTime(d.t), d => yBot(Math.max(0, d.upid)), getCss('--linePid'), 1.2);
     }
 
     function updateStats() {
@@ -988,6 +905,7 @@
         ui.fullscreenBtn.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
         setTimeout(renderAll, 50);
       });
+
       [ui.manualThrottle, ui.ffGain, ui.kp, ui.ki, ui.kd, ui.sat].forEach(el => {
         el.addEventListener('input', updateLabels);
       });
@@ -1038,7 +956,6 @@
       window.addEventListener('resize', renderAll);
       window.addEventListener('orientationchange', renderAll);
 
-      // Manual throttle nudging loop
       setInterval(() => {
         if (currentMode() !== 'manual') return;
         let val = parseFloat(ui.manualThrottle.value);
