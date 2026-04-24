@@ -62,19 +62,19 @@ This is useful for showing:
 In automatic mode, the control law is split into two parts:
 
 ```math
-u = u_{ff} + u_{PID}
+u =  u_{PID} + u_{ff}
 ```
 
 where:
 
 ```math
-u_{PID} = K_p e + K_i \int e\,dt + K_d \frac{de}{dt}, \qquad e = r - x
+u_{PID} = K_p e + K \left(\frac{1}{T_i}\int e\,dt + T_d \frac{de_f}{dt}\right), \qquad e_f = LP(r - y)
 ```
 
 Here:
 
 - `r` is the height reference,
-- `x` is the measured height,
+- `y` is the measured height,
 - `e` is the tracking error,
 - `u_ff` is a constant feedforward term selected by the user.
 
@@ -104,11 +104,10 @@ This makes the control action easier to interpret pedagogically:
 
 The simulation exposes the following controller parameters:
 
-- `Kp`: proportional gain
-- `Ki`: integral gain
-- `Kd`: derivative gain
-- `FF`: feedforward level
-- `Sat`: actuator saturation limit
+- `K`: proportional gain
+- `Ti`: integral time
+- `Td`: derivative time
+- `FF`: feedforward level (hovering-bias approximation)
 
 These can be changed live during the run.
 
@@ -171,7 +170,7 @@ A useful classroom sequence is:
 2. Ask students to track a changing reference.
 3. Switch to **PID + FF** mode.
 4. Set feedforward near the hover value.
-5. Tune `Kp`, then `Kd`, then `Ki`.
+5. Tune `K`,  `Td`, and `Ti`.
 6. Discuss the impact of battery fade and the cargo drop.
 
 ## Running locally
@@ -195,4 +194,3 @@ Ideas for further development:
 - saved best score,
 - selectable anti-windup methods,
 - automatic feedforward based on nominal model values.
-

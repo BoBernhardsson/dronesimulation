@@ -77,7 +77,7 @@
     }
 
     .group.pid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .field {
@@ -296,20 +296,16 @@
 
       <div class="group pid">
         <div class="field">
-          <label for="kp"><span>Kp</span><span class="v" id="kpVal">7.00</span></label>
-          <input id="kp" type="range" min="0" max="20" step="0.01" value="7.0" />
+          <label for="K"><span>K</span><span class="v" id="KVal">7.00</span></label>
+          <input id="K" type="range" min="0" max="10" step="0.01" value="7.0" />
         </div>
         <div class="field">
-          <label for="ki"><span>Ki</span><span class="v" id="kiVal">2.20</span></label>
-          <input id="ki" type="range" min="0" max="15" step="0.01" value="2.2" />
+          <label for="Ti"><span>Ti</span><span class="v" id="TiVal">3.18</span></label>
+          <input id="Ti" type="range" min="0.2" max="10" step="0.01" value="3.18" />
         </div>
         <div class="field">
-          <label for="kd"><span>Kd</span><span class="v" id="kdVal">5.40</span></label>
-          <input id="kd" type="range" min="0" max="10" step="0.01" value="5.4" />
-        </div>
-        <div class="field">
-          <label for="sat"><span>Sat</span><span class="v" id="satVal">18.0</span></label>
-          <input id="sat" type="range" min="2" max="30" step="0.1" value="18" />
+          <label for="Td"><span>Td</span><span class="v" id="TdVal">0.77</span></label>
+          <input id="Td" type="range" min="0" max="4" step="0.01" value="0.77" />
         </div>
       </div>
     </div>
@@ -367,16 +363,14 @@
       demoBtn: document.getElementById('demoBtn'),
       manualThrottle: document.getElementById('manualThrottle'),
       ffGain: document.getElementById('ffGain'),
-      kp: document.getElementById('kp'),
-      ki: document.getElementById('ki'),
-      kd: document.getElementById('kd'),
-      sat: document.getElementById('sat'),
+      K: document.getElementById('K'),
+      Ti: document.getElementById('Ti'),
+      Td: document.getElementById('Td'),
       manualThrottleVal: document.getElementById('manualThrottleVal'),
       ffGainVal: document.getElementById('ffGainVal'),
-      kpVal: document.getElementById('kpVal'),
-      kiVal: document.getElementById('kiVal'),
-      kdVal: document.getElementById('kdVal'),
-      satVal: document.getElementById('satVal'),
+      KVal: document.getElementById('KVal'),
+      TiVal: document.getElementById('TiVal'),
+      TdVal: document.getElementById('TdVal'),
       scoreVal: document.getElementById('scoreVal'),
       modeVal: document.getElementById('modeVal'),
       heightVal: document.getElementById('heightVal'),
@@ -437,24 +431,24 @@
 
     function getParams() {
       return {
-        kp: parseFloat(ui.kp.value),
-        ki: parseFloat(ui.ki.value),
-        kd: parseFloat(ui.kd.value),
+        K: parseFloat(ui.K.value),
+        Ti: parseFloat(ui.Ti.value),
+        Td: parseFloat(ui.Td.value),
         uff: parseFloat(ui.ffGain.value),
-        sat: parseFloat(ui.sat.value),
         manual: parseFloat(ui.manualThrottle.value),
         duration: parseFloat(ui.simDuration.value),
         timeScale: parseFloat(ui.timeScale.value),
+        sat: 18
       };
     }
 
     function updateLabels() {
       ui.manualThrottleVal.textContent = fmt(ui.manualThrottle.value, 2);
       ui.ffGainVal.textContent = fmt(ui.ffGain.value, 2);
-      ui.kpVal.textContent = fmt(ui.kp.value, 2);
-      ui.kiVal.textContent = fmt(ui.ki.value, 2);
-      ui.kdVal.textContent = fmt(ui.kd.value, 2);
-      ui.satVal.textContent = fmt(ui.sat.value, 1);
+      ui.KVal.textContent = fmt(ui.K.value, 2);
+      ui.TiVal.textContent = fmt(ui.Ti.value, 2);
+      ui.TdVal.textContent = fmt(ui.Td.value, 2);
+
       ui.modeVal.textContent = currentMode() === 'manual' ? 'Manual' : 'PID + FF';
       ui.modeVal.className = 'value ' + (currentMode() === 'manual' ? 'mode-manual' : 'mode-pid');
     }
@@ -520,7 +514,6 @@
       const p = getParams();
       const r = reference(state.t);
       const e = r - state.x;
-      
       let u = 0, uff = 0, upid = 0;
 
       if (currentMode() === 'manual') {
@@ -528,16 +521,24 @@
       } else {
         uff = p.uff;
 
+        // Derivative on measurement, not on error
         const dy = dt > 0 ? (state.x - state.prevX) / dt : 0;
 
-        // Low-pass filtered derivative of measurement
-        const tauD = 0.2;
+        // Low-pass filter on derivative
+        const tauD = 0.30;
         const alphaD = dt / (tauD + dt);
         state.dFilt += alphaD * (dy - state.dFilt);
 
         const iCandidate = state.eInt + e * dt;
-        upid = p.kp * e + p.ki * iCandidate - p.kd * state.dFilt;
-        let uUnsat = uff + upid;
+
+        const pidCandidate =
+          p.K * (
+            e +
+            (p.Ti > 1e-6 ? iCandidate / p.Ti : 0) -
+            p.Td * state.dFilt
+          );
+
+        let uUnsat = uff + pidCandidate;
         u = clamp(uUnsat, 0, p.sat);
 
         // Anti-windup: only integrate when saturation is not made worse
@@ -545,12 +546,19 @@
           state.eInt = iCandidate;
         }
 
-        upid = p.kp * e + p.ki * state.eInt - p.kd * state.dFilt;
+        upid =
+          p.K * (
+            e +
+            (p.Ti > 1e-6 ? state.eInt / p.Ti : 0) -
+            p.Td * state.dFilt
+          );
+
         u = clamp(uff + upid, 0, p.sat);
-        state.prevX = state.x;
       }
 
       state.prevE = e;
+      state.prevX = state.x;
+
       return { u, uff, upid, r, e };
     }
 
@@ -848,13 +856,14 @@
       const botBox = { x: m.l, y: m.t + subplotH + m.gap, w: w - m.l - m.r, h: subplotH };
 
       drawPlotBox(ctx, topBox, 'height [m]', 0, plant.ceiling);
-      drawPlotBox(ctx, botBox, 'u', 0, Math.max(20, parseFloat(ui.sat.value)));
+      const uMax = 20;
+
+      drawPlotBox(ctx, botBox, 'u', 0, uMax);
 
       const T = Math.max(parseFloat(ui.simDuration.value), 1);
       const xTime = t => topBox.x + (t / T) * topBox.w;
       const yTop = y => topBox.y + topBox.h - (y / plant.ceiling) * topBox.h;
-      const yBot = y => botBox.y + botBox.h - (y / Math.max(20, parseFloat(ui.sat.value))) * botBox.h;
-
+      const yBot = y => botBox.y + botBox.h - (y / uMax) * botBox.h;
       const xDrop = xTime(Math.min(plant.cargoDropTime, T));
       ctx.strokeStyle = 'rgba(34,197,94,0.7)';
       ctx.setLineDash([5, 5]);
@@ -929,7 +938,7 @@
         setTimeout(renderAll, 50);
       });
 
-      [ui.manualThrottle, ui.ffGain, ui.kp, ui.ki, ui.kd, ui.sat].forEach(el => {
+      [ui.manualThrottle, ui.ffGain, ui.K, ui.Ti, ui.Td].forEach(el => {
         el.addEventListener('input', updateLabels);
       });
       ui.modeSelect.addEventListener('change', updateLabels);
@@ -945,10 +954,9 @@
       });
       ui.demoBtn.addEventListener('click', () => {
         ui.ffGain.value = '9.81';
-        ui.kp.value = '7.0';
-        ui.ki.value = '2.2';
-        ui.kd.value = '5.4';
-        ui.sat.value = '18';
+        ui.K.value = '7.0';
+        ui.Ti.value = '3.18';
+        ui.Td.value = '0.77';
         ui.modeSelect.value = 'pid';
         updateLabels();
       });
