@@ -68,7 +68,7 @@ u =  u_{PID} + u_{ff}
 where:
 
 ```math
-u_{PID} = K_p e + K \left(\frac{1}{T_i}\int e\,dt + T_d \frac{de_f}{dt}\right), \qquad e_f = LP(r - y)
+u_{PID} =  K \left(e + \frac{1}{T_i}\int e\,dt + T_d \frac{de_f}{dt}\right), \qquad e_f = LP(r - y)
 ```
 
 Here:

@@ -129,7 +129,7 @@
 
     .buttons {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 6px;
     }
 
@@ -283,29 +283,29 @@
           <input id="manualThrottle" type="range" min="0" max="20" step="0.01" value="9.81" />
         </div>
         <div class="field">
-          <label for="ffGain"><span>FF</span><span class="v" id="ffGainVal">9.81</span></label>
-          <input id="ffGain" type="range" min="0" max="20" step="0.01" value="9.81" />
+          <label for="ffGain"><span>FF</span><span class="v" id="ffGainVal">1.0</span></label>
+          <input id="ffGain" type="range" min="0" max="20" step="0.01" value="1.00" />
         </div>
         <div class="buttons" style="grid-column: 1 / -1;">
           <button id="startBtn">Start</button>
           <button id="pauseBtn" class="secondary">Pause</button>
-          <button id="demoBtn" class="secondary">Good PID</button>
+          
           <button id="fullscreenBtn" class="secondary">Fullscreen</button>
         </div>
       </div>
 
       <div class="group pid">
         <div class="field">
-          <label for="K"><span>K</span><span class="v" id="KVal">7.00</span></label>
-          <input id="K" type="range" min="0" max="10" step="0.01" value="7.0" />
+          <label for="K"><span>K</span><span class="v" id="KVal">1.00</span></label>
+          <input id="K" type="range" min="0" max="10" step="0.01" value="1.0" />
         </div>
         <div class="field">
-          <label for="Ti"><span>Ti</span><span class="v" id="TiVal">3.18</span></label>
-          <input id="Ti" type="range" min="0.2" max="10" step="0.01" value="3.18" />
+          <label for="Ti"><span>Ti</span><span class="v" id="TiVal">1.00</span></label>
+          <input id="Ti" type="range" min="0.2" max="10" step="0.01" value="1.00" />
         </div>
         <div class="field">
-          <label for="Td"><span>Td</span><span class="v" id="TdVal">0.77</span></label>
-          <input id="Td" type="range" min="0" max="4" step="0.01" value="0.77" />
+          <label for="Td"><span>Td</span><span class="v" id="TdVal">1.00</span></label>
+          <input id="Td" type="range" min="0" max="4" step="0.01" value="1.00" />
         </div>
       </div>
     </div>
@@ -360,7 +360,7 @@
       timeScale: document.getElementById('timeScale'),
       startBtn: document.getElementById('startBtn'),
       pauseBtn: document.getElementById('pauseBtn'),
-      demoBtn: document.getElementById('demoBtn'),
+    
       manualThrottle: document.getElementById('manualThrottle'),
       ffGain: document.getElementById('ffGain'),
       K: document.getElementById('K'),
@@ -952,13 +952,16 @@
         state.paused = !state.paused;
         ui.pauseBtn.textContent = state.paused ? 'Resume' : 'Pause';
       });
-      ui.demoBtn.addEventListener('click', () => {
-        ui.ffGain.value = '9.81';
-        ui.K.value = '7.0';
-        ui.Ti.value = '3.18';
-        ui.Td.value = '0.77';
-        ui.modeSelect.value = 'pid';
-        updateLabels();
+      window.addEventListener('keydown', e => {
+        if (e.shiftKey && e.key.toLowerCase() === 'p') {
+          ui.ffGain.value = '9';
+          ui.K.value = '3.4';
+          ui.Ti.value = '3';
+          ui.Td.value = '0.75';
+          ui.modeSelect.value = 'pid';
+          updateLabels();
+          renderAll();
+        }
       });
 
       window.addEventListener('keydown', e => {
