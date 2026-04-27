@@ -307,6 +307,10 @@
           <label for="Td"><span>Td</span><span class="v" id="TdVal">1.00</span></label>
           <input id="Td" type="range" min="0" max="4" step="0.01" value="1.00" />
         </div>
+        <div class="field">
+          <label for="b"><span>b</span><span class="v" id="bVal">1.00</span></label>
+          <input id="b" type="range" min="0" max="1.5" step="0.01" value="1.0" />
+        </div>
       </div>
     </div>
 
@@ -366,6 +370,8 @@
       K: document.getElementById('K'),
       Ti: document.getElementById('Ti'),
       Td: document.getElementById('Td'),
+      b: document.getElementById('b'),
+      bVal: document.getElementById('bVal'),
       manualThrottleVal: document.getElementById('manualThrottleVal'),
       ffGainVal: document.getElementById('ffGainVal'),
       KVal: document.getElementById('KVal'),
@@ -434,6 +440,7 @@
         K: parseFloat(ui.K.value),
         Ti: parseFloat(ui.Ti.value),
         Td: parseFloat(ui.Td.value),
+        b: parseFloat(ui.b.value),
         uff: parseFloat(ui.ffGain.value),
         manual: parseFloat(ui.manualThrottle.value),
         duration: parseFloat(ui.simDuration.value),
@@ -448,6 +455,7 @@
       ui.KVal.textContent = fmt(ui.K.value, 2);
       ui.TiVal.textContent = fmt(ui.Ti.value, 2);
       ui.TdVal.textContent = fmt(ui.Td.value, 2);
+      ui.bVal.textContent = fmt(ui.b.value, 2);
 
       ui.modeVal.textContent = currentMode() === 'manual' ? 'Manual' : 'PID + FF';
       ui.modeVal.className = 'value ' + (currentMode() === 'manual' ? 'mode-manual' : 'mode-pid');
@@ -475,6 +483,40 @@
         return 4 + 2.2 * Math.sin(0.42 * t) + 0.6 * Math.sin(1.2 * t + 0.8);
       }
       return 1.6 + 0.12 * t + 1.2 * Math.sin(0.7 * t) + (t > 20 ? 1.3 : 0) - (t > 30 ? 1.0 : 0);
+    }
+
+    function scoreBand(t) {
+      const delay = 1.5;
+      const band = 0.4;
+      const rNow = reference(t);
+
+      // During first 2 seconds: no delayed previous reference exists
+      if (t < delay) {
+        return {
+          lower: -Infinity,
+          upper: rNow + band
+        };
+      }
+
+      const rDelay = reference(Math.max(0, t - delay));
+
+      let lower, upper;
+
+      if (rNow > rDelay) {
+        // Reference increased: lower limit waits before increasing
+        lower = rDelay - band;
+        upper = rNow + band;
+      } else if (rNow < rDelay) {
+        // Reference decreased: upper limit waits before decreasing
+        lower = rNow - band;
+        upper = rDelay + band;
+      } else {
+        // No recent reference change
+        lower = rNow - band;
+        upper = rNow + band;
+      }
+
+      return { lower, upper };
     }
 
     function startSimulation() {
@@ -514,6 +556,7 @@
       const p = getParams();
       const r = reference(state.t);
       const e = r - state.x;
+      const eP = p.b * r - state.x;
       let u = 0, uff = 0, upid = 0;
 
       if (currentMode() === 'manual') {
@@ -533,7 +576,7 @@
 
         const pidCandidate =
           p.K * (
-            e +
+            eP +
             (p.Ti > 1e-6 ? iCandidate / p.Ti : 0) -
             p.Td * state.dFilt
           );
@@ -548,7 +591,7 @@
 
         upid =
           p.K * (
-            e +
+            eP +
             (p.Ti > 1e-6 ? state.eInt / p.Ti : 0) -
             p.Td * state.dFilt
           );
@@ -580,9 +623,18 @@
         if (state.v > 0) state.v = 0;
       }
 
-      const du = dt > 0 ? (u - state.lastU) / dt : 0;
-      state.scoreRaw += (1.3 * e * e ) * dt;
+      //const du = dt > 0 ? (u - state.lastU) / dt : 0;
+      //state.scoreRaw += (1.3 * e * e ) * dt;
+      //state.lastU = u;
+      const band = scoreBand(state.t);
+      let outside = 0;
+      if (state.x < band.lower) outside = band.lower - state.x;
+      if (state.x > band.upper) outside = state.x - band.upper;
+      // Only penalize being outside the allowed height corridor.
+      // No penalty on control signal or control signal variation.
+      state.scoreRaw += outside * dt;
       state.lastU = u;
+
       state.t += dt;
 
       if (!state.cargoDropped && state.t >= plant.cargoDropTime) {
@@ -598,7 +650,7 @@
 
     function scoreValue() {
       const duration = Math.max(1, getParams().duration);
-      const s = 1000 - 42 * state.scoreRaw / duration;
+      const s = 1000 - 2000 * state.scoreRaw / duration;
       return Math.max(0, Math.round(s));
     }
 
@@ -873,6 +925,62 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
+      // Score corridor
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.22)';
+      ctx.beginPath();
+
+      for (let i = 0; i <= 200; i++) {
+        const tt = (i / 200) * T;
+        const b = scoreBand(tt);
+        const x = xTime(tt);
+        const y = yTop(b.upper);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      for (let i = 200; i >= 0; i--) {
+        const tt = (i / 200) * T;
+        const b = scoreBand(tt);
+        const x = xTime(tt);
+        const y = yTop(b.lower);
+        ctx.lineTo(x, y);
+      }
+
+      ctx.closePath();
+      ctx.fill();
+
+      // Upper corridor boundary
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.95)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+
+      for (let i = 0; i <= 200; i++) {
+        const tt = (i / 200) * T;
+        const b = scoreBand(tt);
+        const x = xTime(tt);
+        const y = yTop(b.upper);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.stroke();
+
+      // Lower corridor boundary
+      ctx.beginPath();
+
+      for (let i = 0; i <= 200; i++) {
+        const tt = (i / 200) * T;
+        const b = scoreBand(tt);
+        const x = xTime(tt);
+        const y = yTop(b.lower);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.stroke();
+      ctx.setLineDash([]);
+
       if (state.history.length < 2) return;
       polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.r), getCss('--lineRef'), 1.8);
       polyline(ctx, state.history, d => xTime(d.t), d => yTop(d.x), getCss('--lineHeight'), 2.3);
@@ -908,7 +1016,7 @@
       dtReal = clamp(dtReal, 0, 0.04);
       let dtSimTotal = dtReal * p.timeScale;
 
-      const dtMax = 0.025;
+      const dtMax = 0.05;
       while (dtSimTotal > 0) {
         const dt = Math.min(dtMax, dtSimTotal);
         stepSim(dt);
@@ -938,7 +1046,7 @@
         setTimeout(renderAll, 50);
       });
 
-      [ui.manualThrottle, ui.ffGain, ui.K, ui.Ti, ui.Td].forEach(el => {
+      [ui.manualThrottle, ui.ffGain, ui.K, ui.Ti, ui.Td, ui.b].forEach(el => {
         el.addEventListener('input', updateLabels);
       });
       ui.modeSelect.addEventListener('change', updateLabels);
@@ -954,10 +1062,11 @@
       });
       window.addEventListener('keydown', e => {
         if (e.shiftKey && e.key.toLowerCase() === 'p') {
-          ui.ffGain.value = '9';
-          ui.K.value = '3.4';
+          ui.ffGain.value = '9.8';
+          ui.K.value = '4.1';
           ui.Ti.value = '3';
           ui.Td.value = '0.75';
+          ui.b.value = '0.9';
           ui.modeSelect.value = 'pid';
           updateLabels();
           renderAll();
