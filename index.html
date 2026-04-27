@@ -565,7 +565,8 @@
         uff = p.uff;
 
         // Derivative on measurement, not on error
-        const dy = dt > 0 ? (state.x - state.prevX) / dt : 0;
+        //const dy = dt > 0 ? (state.x - state.prevX) / dt : 0;
+        const dy = state.v;
 
         // Low-pass filter on derivative
         const tauD = 0.30;
