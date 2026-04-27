@@ -225,15 +225,15 @@ Instead, the drone must stay inside a **tracking corridor** around the reference
 ### Corridor Width
 
 ```math
-r \pm 0.5
+r \pm 0.4
 ```
 
 ### Smart Delays
 
 To avoid unfair penalties:
 
-- when reference increases, the **lower boundary waits 2 seconds**
-- when reference decreases, the **upper boundary waits 2 seconds**
+- when reference increases, the **lower boundary waits 1.5 seconds**
+- when reference decreases, the **upper boundary waits 1.5 seconds**
 
 This rewards practical tracking rather than impossible instant jumps.
 
