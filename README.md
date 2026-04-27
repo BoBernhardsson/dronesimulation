@@ -1,196 +1,307 @@
 # Drone Height Control Game
 
-A single-file browser-based simulation for teaching **manual control**, **PID control**, and **feedforward compensation** on a simplified drone height-control problem.
+A single-file browser-based simulation for teaching **manual control**, **PID control**, **feedforward compensation**, and practical tuning of a simplified drone height-control system.
 
-The app is designed to run as a static webpage, for example through **GitHub Pages**.
+The app runs entirely in the browser as one HTML file and is suitable for hosting with **GitHub Pages**. The current public version is available at:
+
+https://bobernhardsson.github.io/dronesimulation/
+
+---
 
 ## Overview
 
-The simulation focuses on **vertical motion only**. The user either:
+The simulation focuses on **vertical motion only**. The user can either:
 
-- flies the drone manually by adjusting thrust, or
-- tunes a **PID controller with a feedforward term** to make the drone follow a height reference.
+- fly the drone manually by adjusting thrust, or
+- tune a **PID controller with feedforward** to track changing height references.
 
-The interface shows:
+The interface contains:
 
-- a **drone visualization** on the left,
-- streaming plots on the right for:
-  - **height and reference**,
-  - **control signal**,
-- compact controls for switching mode and tuning controller parameters,
-- a score based on tracking performance.
+- a drone visualization,
+- live plots of:
+  - height and reference,
+  - control signal,
+- real-time controller sliders,
+- score calculation based on staying within an allowed tracking corridor.
 
-## Model
+---
 
-The drone is modeled as
+## Dynamic Model
+
+The drone is modeled as:
 
 ```math
-\ddot{x}(t) = k(t)u(t) - m(t)g
+\ddot{x}(t) = k(t)\,u(t) - m(t)\,g
 ```
 
 where:
 
-- `x(t)` is height,
-- `u(t)` is the control input / thrust command,
-- `g = 9.81 m/s²`,
-- `k(t)` is a time-varying input gain,
-- `m(t)` is a time-varying mass.
+- `x(t)` = height  
+- `u(t)` = thrust command  
+- `g = 9.81 m/s²`
+- `k(t)` = thrust effectiveness
+- `m(t)` = drone mass
 
-### Time-varying plant effects
+---
 
-To make the control task realistic and educational, the plant changes during the simulation:
+## Plant Variations During Simulation
 
-- **Battery fade:** `k(t)` slowly decreases over time, meaning the same input gives less acceleration later in the run.
-- **Cargo drop:** at **15 seconds**, the mass drops by **30%**, creating an abrupt plant change.
+To make the control problem realistic, the plant changes during flight:
 
-These effects are useful for discussing robustness, feedforward mismatch, disturbance rejection, and integral action.
+### Battery Fade
 
-## Control modes
+The gain `k(t)` slowly decreases over time.
 
-### 1. Manual mode
+This means the same control signal gives less lift later in the simulation.
 
-In manual mode, the user directly controls the thrust command `u`.
+### Cargo Drop
 
-This is useful for showing:
+At **45 seconds**, the mass drops by **30%**.
 
-- how hard it is to track a reference manually,
-- why steady thrust is needed just to hover,
-- how plant variations make manual control difficult.
+This creates a sudden plant change and tests controller robustness.
 
-### 2. PID + feedforward mode
+---
 
-In automatic mode, the control law is split into two parts:
+## Control Modes
+
+## 1. Manual Control
+
+The user directly controls thrust.
+
+This demonstrates:
+
+- difficulty of manual tracking,
+- need for hover thrust,
+- effect of changing plant parameters.
+
+Keyboard control is supported.
+
+---
+
+## 2. PID + Feedforward Control
+
+The controller is:
 
 ```math
-u =  u_{PID} + u_{ff}
+u = u_{ff} + u_{PID}
+```
+
+with
+
+```math
+u_{PID}
+=
+K\left[
+(br-y)
++
+\frac{1}{T_i}\int(r-y)\,dt
+-
+T_d \hat{\dot y}
+\right]
 ```
 
 where:
 
-```math
-u_{PID} =  K \left(e + \frac{1}{T_i}\int e\,dt + T_d \frac{de_f}{dt}\right), \qquad e_f = LP(r - y)
-```
+- `r` = reference height
+- `y` = measured height
+- `b` = proportional setpoint weight
+- `K` = controller gain
+- `Ti` = integral time
+- `Td` = derivative time
+- `ŷdot` = low-pass filtered vertical velocity
+- `u_ff` = feedforward hover bias
 
-Here:
+---
 
-- `r` is the height reference,
-- `y` is the measured height,
-- `e` is the tracking error,
-- `u_ff` is a constant feedforward term selected by the user.
+## Why Use `b`
 
-### Role of the feedforward term
-
-The feedforward term is intended to provide most of the control effort needed for hover.
-
-For a nominal hover condition,
+The proportional term uses:
 
 ```math
-u_{ff} \approx \frac{m g}{k}
+br - y
 ```
 
-If feedforward is chosen well, the PID controller only has to correct for:
+instead of:
 
-- transient tracking errors,
-- model mismatch,
-- battery fade,
-- the cargo drop.
+```math
+r - y
+```
 
-This makes the control action easier to interpret pedagogically:
+This reduces overshoot after step changes.
 
-- **feedforward** handles the known baseline demand,
-- **feedback** handles what the model does not predict exactly.
+Typical values:
 
-## PID tuning parameters
+- `b = 1.0` → normal proportional action  
+- `b = 0.5` → softer setpoint response  
+- `b = 0.0` → no proportional response to reference jumps
 
-The simulation exposes the following controller parameters:
+This is standard **setpoint weighting**.
 
-- `K`: proportional gain
-- `Ti`: integral time
-- `Td`: derivative time
-- `FF`: feedforward level (hovering-bias approximation)
+---
 
-These can be changed live during the run.
+## Feedforward Term
 
-## Anti-windup
+The feedforward term supplies most of the thrust needed to hover:
 
-Yes — the current implementation includes a **simple anti-windup mechanism**.
+```math
+u_{ff} \approx \frac{mg}{k}
+```
 
-It is **not** a full back-calculation scheme, but it does prevent the integral state from growing in the wrong situations.
+Then PID only corrects:
 
-The controller first computes a tentative integral update and forms the unsaturated command. Then:
+- transients
+- battery fade
+- cargo drop
+- modeling mismatch
 
-- if the command is **not saturated**, the integral update is accepted,
-- if the command **is saturated**, the integral is only allowed to update when the error would help drive the controller **back out of saturation**.
+---
 
-In other words, the integral state is blocked when it would worsen saturation, and allowed when it would help recover from it.
+## Derivative Filtering
 
-This is a standard and useful **conditional integration** anti-windup strategy.
+The derivative part is based on measured motion, **not reference error**.
 
-## Scoring
+This avoids derivative kick when the reference changes suddenly.
 
-The score rewards accurate and smooth tracking.
+A low-pass filter is used:
 
-The current score penalizes:
+```math
+\hat{\dot y} = LPF(\dot y)
+```
 
-- squared tracking error,
-- control effort,
-- rapid control changes.
+This gives smoother control signals.
 
-This means a good score requires more than simply reaching the reference:
+---
 
-- low overshoot helps,
-- persistent oscillation hurts,
-- unnecessarily aggressive control also hurts.
+## Anti-Windup
 
-## Reference profiles
+The integral term uses **conditional integration** anti-windup.
 
-The app includes multiple built-in reference trajectories:
+If actuator saturation occurs:
+
+- the integrator is frozen when it would worsen saturation
+- it is allowed to move when it helps recover
+
+This prevents runaway integral buildup.
+
+---
+
+## Tuning Parameters
+
+The player can tune:
+
+- `K`
+- `Ti`
+- `Td`
+- `b`
+- `FF`
+
+Typical starting values:
+
+- `K = 1`
+- `Ti = 1`
+- `Td = 1`
+- `b = 1`
+
+---
+
+## Reference Profiles
+
+Built-in references include:
 
 - **Steps**
 - **Sine**
 - **Challenge**
 
-These allow the same controller to be tested on different tracking tasks.
+The default game mode uses multiple step changes.
 
-## Classroom use
+---
 
-This simulation is intended for teaching topics such as:
+## Scoring System
 
-- manual versus automatic control,
-- equilibrium and hover thrust,
-- feedback versus feedforward,
-- PID tuning,
-- actuator saturation,
-- integral action,
-- robustness to plant changes.
+The score no longer penalizes control effort.
 
-A useful classroom sequence is:
+Instead, the drone must stay inside a **tracking corridor** around the reference.
 
-1. Start in **manual mode**.
-2. Ask students to track a changing reference.
-3. Switch to **PID + FF** mode.
-4. Set feedforward near the hover value.
-5. Tune `K`,  `Td`, and `Ti`.
-6. Discuss the impact of battery fade and the cargo drop.
+### Corridor Width
 
-## Running locally
+```math
+r \pm 0.5
+```
 
-Because the app is a single HTML file, you can run it by simply opening it in a browser.
+### Smart Delays
 
-For GitHub Pages, place the file in a repository as:
+To avoid unfair penalties:
 
-- `index.html`
+- when reference increases, the **lower boundary waits 2 seconds**
+- when reference decreases, the **upper boundary waits 2 seconds**
 
-and enable GitHub Pages for the branch.
+This rewards practical tracking rather than impossible instant jumps.
 
-## Possible future extensions
+### Score Meaning
 
-Ideas for further development:
+- Stay inside corridor → high score
+- Leave corridor → penalty accumulates
+- Fast but wild control gives no direct penalty
 
-- disturbance wind gusts,
-- noise on the height measurement,
-- explicit hover operating-point display,
-- level-based challenges,
-- saved best score,
-- selectable anti-windup methods,
-- automatic feedforward based on nominal model values.
+---
+
+## Why Overshoot Can Occur
+
+For this drone system (approximately a double integrator), some overshoot after step changes is natural when integral action is used.
+
+This makes the simulator useful for discussing:
+
+- transient design
+- damping
+- setpoint weighting
+- tradeoff between speed and overshoot
+
+---
+
+## Classroom Use
+
+Useful for teaching:
+
+- manual vs automatic control
+- PID tuning
+- feedforward vs feedback
+- anti-windup
+- robustness
+- setpoint weighting (`b`)
+- actuator saturation
+- double-integrator dynamics
+
+Suggested exercise:
+
+1. Try manual mode  
+2. Tune hover feedforward  
+3. Add proportional action  
+4. Add derivative damping  
+5. Add integral correction  
+6. Tune `b` to reduce overshoot  
+7. Observe battery fade and cargo drop
+
+---
+
+## Running Locally
+
+Open `index.html` in any modern browser.
+
+---
+
+## GitHub Pages
+
+Host by placing `index.html` in the repository root and enabling GitHub Pages.
+
+---
+
+## Possible Future Extensions
+
+- wind disturbances
+- measurement noise
+- sensor delay
+- leaderboard
+- saved best scores
+- auto-tuning challenge
+- 2D drone motion
+- Kalman filter mode
